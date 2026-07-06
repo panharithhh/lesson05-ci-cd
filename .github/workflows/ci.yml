@@ -1,0 +1,59 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: maven
+      
+      - name: Build and run tests with Maven
+        run: mvn clean test jacoco:check
+        
+      - name: Upload JUnit Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: junit-report
+          path: target/surefire-reports/
+          
+  docker-build-push:
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Build Docker Image
+        run: |
+          docker build -t myapp:${{ github.sha }} .
+          # Simulating a push to a registry (e.g., GHCR or Docker Hub)
+          echo "docker push myapp:${{ github.sha }}"
+          
+  deploy-staging:
+    needs: docker-build-push
+    runs-on: ubuntu-latest
+    environment:
+      name: staging
+    steps:
+      - name: Deploy to Staging
+        run: |
+          echo "Deploying myapp:${{ github.sha }} to staging environment..."
+          sleep 2 # Simulate deployment time
+          
+      - name: Smoke Test
+        run: |
+          echo "Running smoke tests..."
+          # Mocking a smoke test that fails on bad response
+          echo "Smoke test passed!"
